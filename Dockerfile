@@ -1,20 +1,17 @@
-# Oficjalny obraz Playwright z Ubuntu + wszystkie zależności
 FROM mcr.microsoft.com/playwright:focal
 
-# Ustaw katalog roboczy
 WORKDIR /app
 
-# Kopiuj package.json i package-lock.json (jeśli masz)
+# Skopiuj pliki
 COPY package.json package-lock.json* ./
-
-# Instaluj zależności Node.js
 RUN npm install
 
-# Kopiuj resztę plików aplikacji
 COPY . .
 
-# Otwórz port, na którym działa aplikacja
+# ✅ Kluczowy krok – instalacja przeglądarek
+RUN npx playwright install --with-deps
+
+# Otwórz port
 EXPOSE 10000
 
-# Start aplikacji
 CMD ["node", "index.js"]
