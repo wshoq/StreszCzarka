@@ -9,7 +9,6 @@ app.use(express.json());
 const LAST_URLS_PATH = path.join(__dirname, "last.json");
 const MAX_URLS = 5;
 
-// Globalne obsługi błędów dla lepszego debugowania
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
 });
@@ -17,7 +16,6 @@ process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason);
 });
 
-// Funkcja odczytu zapisanych URL-i
 function getLastUrls() {
   try {
     const data = fs.readFileSync(LAST_URLS_PATH, "utf-8");
@@ -27,17 +25,13 @@ function getLastUrls() {
   }
 }
 
-// Funkcja zapisu nowego URL-a
 function addUrlToHistory(url) {
   let urls = getLastUrls();
 
-  // Usuń duplikaty
   urls = urls.filter((u) => u !== url);
 
-  // Dodaj nowy na początek
   urls.unshift(url);
 
-  // Ogranicz do MAX_URLS
   if (urls.length > MAX_URLS) {
     urls = urls.slice(0, MAX_URLS);
   }
@@ -45,12 +39,10 @@ function addUrlToHistory(url) {
   fs.writeFileSync(LAST_URLS_PATH, JSON.stringify(urls, null, 2), "utf-8");
 }
 
-// Endpoint zdrowotny (do testów)
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Endpoint ekstrakcji artykułu
 app.post("/extract", async (req, res) => {
   const { url } = req.body;
 
@@ -106,7 +98,6 @@ app.post("/extract", async (req, res) => {
   }
 });
 
-// Endpoint do zapisywania URL po wysłaniu na Telegram
 app.post("/remember", (req, res) => {
   const { url } = req.body;
 
