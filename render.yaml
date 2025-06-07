@@ -3,7 +3,7 @@ services:
     name: playwright-extractor
     env: node
     plan: free
-    buildCommand: "npm install"
+    buildCommand: "npm install && npx playwright install"
     startCommand: "npm start"
     envVars:
       - key: PORT
