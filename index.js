@@ -9,6 +9,14 @@ app.use(express.json());
 const LAST_URLS_PATH = path.join(__dirname, "last.json");
 const MAX_URLS = 5;
 
+// Global error handlers - lepsze debugowanie
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
 // ✅ Odczyt zapisanych URL-i
 function getLastUrls() {
   try {
@@ -49,7 +57,11 @@ app.post("/extract", async (req, res) => {
   }
 
   try {
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
@@ -82,6 +94,7 @@ app.post("/extract", async (req, res) => {
       content: content.trim()
     });
   } catch (err) {
+    console.error("Błąd podczas ekstrakcji:", err);
     res.status(500).json({ error: `Błąd przetwarzania: ${err.message}` });
   }
 });
