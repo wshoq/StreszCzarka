@@ -9,41 +9,48 @@ app.use(express.json());
 const LAST_URLS_PATH = path.join(__dirname, "last.json");
 const MAX_URLS = 5;
 
-// Global error handlers - lepsze debugowanie
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+// Globalne obsługi błędów dla lepszego debugowania
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
 });
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection:', reason);
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
 });
 
-// ✅ Odczyt zapisanych URL-i
+// Funkcja odczytu zapisanych URL-i
 function getLastUrls() {
   try {
     const data = fs.readFileSync(LAST_URLS_PATH, "utf-8");
     return JSON.parse(data);
-  } catch (e) {
+  } catch {
     return [];
   }
 }
 
-// ✅ Dodanie nowego URL-a do historii
+// Funkcja zapisu nowego URL-a
 function addUrlToHistory(url) {
   let urls = getLastUrls();
 
-  // Usuń jeśli już istnieje
-  urls = urls.filter(u => u !== url);
+  // Usuń duplikaty
+  urls = urls.filter((u) => u !== url);
 
-  urls.unshift(url); // Dodaj na początek
+  // Dodaj nowy na początek
+  urls.unshift(url);
 
+  // Ogranicz do MAX_URLS
   if (urls.length > MAX_URLS) {
-    urls = urls.slice(0, MAX_URLS); // Tnij do maksymalnie 5
+    urls = urls.slice(0, MAX_URLS);
   }
 
   fs.writeFileSync(LAST_URLS_PATH, JSON.stringify(urls, null, 2), "utf-8");
 }
 
-// 🚀 Endpoint do ekstrakcji artykułu
+// Endpoint zdrowotny (do testów)
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Endpoint ekstrakcji artykułu
 app.post("/extract", async (req, res) => {
   const { url } = req.body;
 
@@ -56,28 +63,29 @@ app.post("/extract", async (req, res) => {
     return res.status(200).json({ message: "URL już był — pomijam" });
   }
 
+  let browser;
   try {
-    const browser = await chromium.launch({
+    browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const context = await browser.newContext({
       userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     });
     const page = await context.newPage();
 
     try {
       await page.goto(url, {
         waitUntil: "domcontentloaded",
-        timeout: 60000
+        timeout: 60000,
       });
-    } catch (err) {
+    } catch {
       console.warn("⏳ domcontentloaded failed, retrying with load...");
       await page.goto(url, {
         waitUntil: "load",
-        timeout: 60000
+        timeout: 60000,
       });
     }
 
@@ -86,20 +94,19 @@ app.post("/extract", async (req, res) => {
     const title = await page.title();
     const content = await page.evaluate(() => document.body.innerText);
 
-    await browser.close();
-
-    // ⛔ NIE zapisujemy już tutaj — zapis robisz po wysłaniu na Telegram
     res.json({
       title,
-      content: content.trim()
+      content: content.trim(),
     });
   } catch (err) {
     console.error("Błąd podczas ekstrakcji:", err);
     res.status(500).json({ error: `Błąd przetwarzania: ${err.message}` });
+  } finally {
+    if (browser) await browser.close();
   }
 });
 
-// ✅ Nowy endpoint: zapisanie URL-a po wysyłce na Telegram
+// Endpoint do zapisywania URL po wysłaniu na Telegram
 app.post("/remember", (req, res) => {
   const { url } = req.body;
 
@@ -117,6 +124,6 @@ app.post("/remember", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`🚀 Serwer działa na http://localhost:${PORT}`)
-);
+app.listen(PORT, () => {
+  console.log(`🚀 Serwer działa na http://localhost:${PORT}`);
+});
