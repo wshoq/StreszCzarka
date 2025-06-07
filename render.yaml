@@ -1,12 +1,9 @@
 services:
   - type: web
     name: playwright-extractor
-    env: node
+    env: docker
     plan: free
-    buildCommand: |
-      npm install
-      npx playwright install
-    startCommand: npm start
+    dockerfilePath: Dockerfile
     envVars:
       - key: PORT
         value: "10000"
