@@ -1,17 +1,14 @@
-FROM mcr.microsoft.com/playwright:focal
+FROM mcr.microsoft.com/playwright:v1.52.0-jammy
 
 WORKDIR /app
 
-# Skopiuj pliki
-COPY package.json package-lock.json* ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY . .
 
-# ✅ Kluczowy krok – instalacja przeglądarek
-RUN npx playwright install --with-deps
+# ✅ Kluczowy krok — ręczne wymuszenie instalacji przeglądarek
+RUN npx playwright install chromium --with-deps
 
-# Otwórz port
-EXPOSE 10000
-
-CMD ["node", "index.js"]
+# Render używa CMD, ale my dodatkowo zadbamy o fallback
+CMD npx playwright install chromium && node index.js
