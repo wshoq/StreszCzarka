@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 
 const LAST_URLS_PATH = path.join(__dirname, "last.json");
-const MAX_URLS = 5;
+const MAX_URLS = 20;
 
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
