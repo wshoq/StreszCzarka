@@ -1,22 +1,13 @@
 const express = require("express");
 const { chromium } = require("playwright");
-const Database = require("better-sqlite3");
+const fs = require("fs");
 const path = require("path");
 
 const app = express();
 app.use(express.json());
 
-const db = new Database(path.join(__dirname, "last.db"));
+const LAST_URLS_PATH = path.join(__dirname, "last.json");
 const MAX_URLS = 20;
-
-// Tworzymy tabelę, jeśli nie istnieje
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS urls (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT UNIQUE,
-    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`).run();
 
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
@@ -26,29 +17,26 @@ process.on("unhandledRejection", (reason) => {
 });
 
 function getLastUrls() {
-  const rows = db.prepare(`
-    SELECT url FROM urls
-    ORDER BY added_at DESC
-    LIMIT ?
-  `).all(MAX_URLS);
-
-  return rows.map(row => row.url);
+  try {
+    const data = fs.readFileSync(LAST_URLS_PATH, "utf-8");
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
 }
 
 function addUrlToHistory(url) {
-  const insert = db.prepare(`INSERT OR IGNORE INTO urls (url) VALUES (?)`);
-  insert.run(url);
+  let urls = getLastUrls();
 
-  const count = db.prepare(`SELECT COUNT(*) AS count FROM urls`).get().count;
-  if (count > MAX_URLS) {
-    const deleteOld = db.prepare(`
-      DELETE FROM urls
-      WHERE id NOT IN (
-        SELECT id FROM urls ORDER BY added_at DESC LIMIT ?
-      )
-    `);
-    deleteOld.run(MAX_URLS);
+  urls = urls.filter((u) => u !== url);
+
+  urls.unshift(url);
+
+  if (urls.length > MAX_URLS) {
+    urls = urls.slice(0, MAX_URLS);
   }
+
+  fs.writeFileSync(LAST_URLS_PATH, JSON.stringify(urls, null, 2), "utf-8");
 }
 
 app.get("/health", (req, res) => {
